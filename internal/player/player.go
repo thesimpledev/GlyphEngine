@@ -24,6 +24,9 @@ const (
 type Level interface {
 	IsWalkable(x, y int) bool
 	UpdateBoard(x, y, dx, dy int)
+}
+
+type Camera interface {
 	UpdateCamera(x, y int)
 }
 
@@ -32,6 +35,7 @@ type Player struct {
 	walk             []*audio.Player
 	movementCooldown int
 	Level            Level
+	Camera           Camera
 }
 
 type PlayerMove struct {
