@@ -2,6 +2,7 @@ package player
 
 import (
 	_ "embed"
+	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/audio"
@@ -90,7 +91,10 @@ func (p *Player) PlayFootstep() {
 	index := rand.Intn(len(p.walk))
 	sound := p.walk[index]
 	sound.SetVolume(0.5)
-	sound.Rewind()
+	if err := sound.Rewind(); err != nil {
+		log.Printf("footstep rewind failed: %v", err)
+		return
+	}
 	sound.Play()
 }
 

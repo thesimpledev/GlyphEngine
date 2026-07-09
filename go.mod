@@ -1,11 +1,11 @@
 module github.com/StevenDStanton/the-social-shift
 
-go 1.22.5
+go 1.25.0
 
 require (
 	github.com/hajimehoshi/ebiten/v2 v2.7.8
 	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
-	golang.org/x/image v0.18.0
+	golang.org/x/image v0.39.0
 )
 
 require (
@@ -14,7 +14,7 @@ require (
 	github.com/ebitengine/oto/v3 v3.2.0 // indirect
 	github.com/ebitengine/purego v0.7.1 // indirect
 	github.com/jezek/xgb v1.1.1 // indirect
-	golang.org/x/sync v0.10.0 // indirect
+	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.22.0 // indirect
-	golang.org/x/text v0.16.0 // indirect
+	golang.org/x/text v0.36.0 // indirect
 )
