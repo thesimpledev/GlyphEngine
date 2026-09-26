@@ -1,7 +1,7 @@
 # Makefile for building and deploying the game to Web, PC (Windows & Linux)
 
 # Variables
-PROJECT_PATH          = github.com/StevenDStanton/the-social-shift
+PROJECT_PATH          = github.com/thesimpledev/GlyphEngine
 DIST_DIR             = dist
 VERSION              = 1.2.5
 

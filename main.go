@@ -4,11 +4,11 @@ import (
 	_ "image/png"
 	"log"
 
-	"github.com/StevenDStanton/the-social-shift/internal/game"
-	"github.com/StevenDStanton/the-social-shift/internal/intro"
-	"github.com/StevenDStanton/the-social-shift/internal/level"
-	"github.com/StevenDStanton/the-social-shift/internal/player"
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/thesimpledev/GlyphEngine/internal/game"
+	"github.com/thesimpledev/GlyphEngine/internal/intro"
+	"github.com/thesimpledev/GlyphEngine/internal/level"
+	"github.com/thesimpledev/GlyphEngine/internal/player"
 )
 
 const (

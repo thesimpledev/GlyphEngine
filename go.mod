@@ -1,4 +1,4 @@
-module github.com/StevenDStanton/the-social-shift
+module github.com/thesimpledev/GlyphEngine
 
 go 1.25.0
 
