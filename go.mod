@@ -4,7 +4,6 @@ go 1.25.0
 
 require (
 	github.com/hajimehoshi/ebiten/v2 v2.7.8
-	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
 	golang.org/x/image v0.39.0
 )
 

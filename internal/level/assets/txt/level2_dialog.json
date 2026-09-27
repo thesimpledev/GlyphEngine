@@ -93,7 +93,17 @@
             },
             {
               "text": "Call Acme Corp",
-              "nextState": "acme_intro"
+              "nextState": "desk_phone"
+            }
+          ]
+        },
+        {
+          "id": "desk_phone",
+          "text": "The phone on the desk rings. She looks at you, then at the phone, then back at you.",
+          "options": [
+            {
+              "text": "Leave",
+              "nextState": "end_game"
             }
           ]
         },

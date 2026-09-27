@@ -2,6 +2,7 @@ package game
 
 import (
 	"image/color"
+	"slices"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/audio"
@@ -19,7 +20,7 @@ type Game struct {
 	AudioContext *audio.Context
 	screenWidth  int
 	screenHeight int
-	Components   []interface{}
+	Components   []any
 }
 
 func New(screenWidth, screenHeight int) *Game {
@@ -30,11 +31,11 @@ func New(screenWidth, screenHeight int) *Game {
 	}
 }
 
-func (g *Game) AddComponent(c interface{}) {
+func (g *Game) AddComponent(c any) {
 	g.Components = append(g.Components, c)
 }
 
-func (g *Game) RemoveComponent(c interface{}) {
+func (g *Game) RemoveComponent(c any) {
 	for i, component := range g.Components {
 		if component == c {
 			g.Components[i] = nil
@@ -44,22 +45,15 @@ func (g *Game) RemoveComponent(c interface{}) {
 }
 
 func (g *Game) cleanupComponents() {
-	components := []interface{}{}
-	for _, c := range g.Components {
-		if c != nil {
-			components = append(components, c)
-		}
-	}
-
-	g.Components = components
+	g.Components = slices.DeleteFunc(g.Components, func(c any) bool { return c == nil })
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.Black)
 
 	for _, c := range g.Components {
-		if updatable, ok := c.(Drawable); ok {
-			updatable.Draw(screen)
+		if drawable, ok := c.(Drawable); ok {
+			drawable.Draw(screen)
 		}
 	}
 }
@@ -76,7 +70,6 @@ func (g *Game) Update() error {
 		if updatable, ok := c.(Updatable); ok {
 			updatable.Update()
 		}
-
 	}
 
 	g.cleanupComponents()

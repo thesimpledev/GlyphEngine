@@ -1,194 +1,152 @@
 package level
 
 import (
-	"image/color"
+	_ "embed"
+	"fmt"
 	"log"
 	"strings"
 
-	_ "embed"
-
-	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/text"
-	"golang.org/x/image/font"
-	"golang.org/x/image/font/gofont/gomono"
-	"golang.org/x/image/font/opentype"
+	"github.com/thesimpledev/GlyphEngine/internal/input"
 )
 
 //go:embed assets/txt/level1_map.txt
-var level_1_map string
+var level1Map string
 
 //go:embed assets/txt/level2_map.txt
-var level_2_map string
+var level2Map string
 
 //go:embed assets/txt/level3_map.txt
-var level_3_map string
+var level3Map string
 
 //go:embed assets/txt/level4_map.txt
-var level_4_map string
+var level4Map string
 
 //go:embed assets/txt/level5_map.txt
-var level_5_map string
-
-type EntityMap map[string]Entity
+var level5Map string
 
 type Player interface {
 	SetPosition(x, y int)
 }
 
 const (
-	fontSize    = 16
-	DPI         = 72
-	COLS        = 80
-	ROWS        = 45
-	COL_DIVIDER = 30
-	ROW_DIVIDER = 40
+	fontSize   = 16
+	dpi        = 72
+	cols       = 80
+	rows       = 45
+	colDivider = 30
+	rowDivider = 40
 )
 
 const (
-	LEVEL_EMPTY     = ' '
-	LEVEL_WALL      = '#'
-	DIALOG_SELECTOR = '>'
-	DIALOG_INDENT   = 2
+	levelEmpty   = ' '
+	levelWall    = '#'
+	dialogIndent = 2
 )
 
 var (
-	Obstacles = map[rune]rune{}
-
 	levelMaps = []string{
-		level_1_map,
-		level_2_map,
-		level_3_map,
-		level_4_map,
-		level_5_map,
+		level1Map,
+		level2Map,
+		level3Map,
+		level4Map,
+		level5Map,
 	}
 	levelDialogs = []string{
-		level_1_dialog,
-		level_2_dialog,
-		level_3_dialog,
-		level_4_dialog,
-		level_5_dialog,
+		level1Dialog,
+		level2Dialog,
+		level3Dialog,
+		level4Dialog,
+		level5Dialog,
 	}
 )
 
+type gridPos struct {
+	x int
+	y int
+}
+
 type Level struct {
-	face                 font.Face
-	TheGrid              [][]rune
+	Glyphs               GlyphDrawer
+	ViewGrid             [][]rune
 	MapGrid              [][]rune
+	Player               Player
+	Keys                 input.KeyReader
 	level                int
-	dialogState          *DialogState
-	levelIntroDialog     []string
-	dialogActive         bool
 	selectedDialog       int
 	showingIntro         bool
 	showingItem          bool
-	entities             EntityMap
-	Player               Player
-	selectCooldown       int
+	disableInput         bool
+	entities             map[gridPos]*Entity
+	obstacles            map[rune]struct{}
 	currentEntity        *Entity
 	currentDialogStateID string
-	disableInput         bool
+	cameraX              int
+	cameraY              int
+	playerX              int
+	playerY              int
+	playerSymbol         rune
 }
 
 func New() *Level {
-	parsedFont, err := opentype.Parse(gomono.TTF)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	face, err := opentype.NewFace(parsedFont, &opentype.FaceOptions{
-		Size:    fontSize,
-		DPI:     DPI,
-		Hinting: font.HintingNone,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	l := &Level{face: face, disableInput: true}
-
-	return l
-
-}
-
-func (l *Level) Draw(screen *ebiten.Image) {
-	for y := 0; y < len(l.TheGrid); y++ {
-		for x := 0; x < len(l.TheGrid[y]); x++ {
-			ch := l.TheGrid[y][x]
-			px := x * fontSize
-			py := (y + 1) * fontSize
-
-			textColor := color.RGBA{255, 255, 255, 1}
-
-			if l.dialogActive && y == l.selectedDialog && x >= COL_DIVIDER {
-				textColor = color.RGBA{0xff, 0xff, 0xff, 0xff}
-			}
-
-			text.Draw(screen, string(ch), l.face, px, py, textColor)
-		}
-	}
+	return &Level{Glyphs: newGlyphCache(newFace()), disableInput: true, Keys: input.Keyboard{}}
 }
 
 func (l *Level) Update() {
 	l.updateDialog()
-
 }
 
 func (l *Level) LoadLevel() {
-	Obstacles = map[rune]rune{LEVEL_WALL: LEVEL_WALL}
-	log.Println("Loading level", l.level)
-	l.entities = make(EntityMap)
-	l.configureGrid()
-	l.resetLevelState()
-	l.loadMap()
-	l.loadDialog()
-	l.updateGridFromCamera()
-	l.disableInput = false
-
-}
-
-func (l *Level) configureGrid() {
-	l.TheGrid = make([][]rune, ROWS)
-	for row := 0; row < ROWS; row++ {
-		l.TheGrid[row] = make([]rune, COLS)
+	if l.level < 0 || l.level >= len(levelMaps) {
+		panic(fmt.Sprintf("level: index %d out of range (have %d levels)", l.level, len(levelMaps)))
 	}
+	if l.Player == nil {
+		panic("level: Player is not set")
+	}
+	log.Println("Loading level", l.level)
+	l.resetLevelState()
+	l.MapGrid = parseMap(levelMaps[l.level])
+	l.loadDialog()
+	l.UpdateCamera(l.playerX, l.playerY)
+	l.disableInput = false
 }
 
 func (l *Level) resetLevelState() {
-	for y := 0; y < ROWS; y++ {
-		for x := 0; x < COLS; x++ {
-			l.TheGrid[y][x] = LEVEL_EMPTY
+	l.ViewGrid = make([][]rune, rows)
+	for y := range l.ViewGrid {
+		l.ViewGrid[y] = make([]rune, cols)
+		for x := range l.ViewGrid[y] {
+			l.ViewGrid[y][x] = levelEmpty
 		}
 	}
-
+	l.obstacles = map[rune]struct{}{levelWall: {}}
+	l.entities = make(map[gridPos]*Entity)
+	l.currentEntity = nil
+	l.currentDialogStateID = ""
+	l.selectedDialog = 0
 	l.showingIntro = true
-
+	l.showingItem = false
+	l.cameraX = 0
+	l.cameraY = 0
 }
 
-func (l *Level) loadMap() {
-	mapData := levelMaps[l.level]
-	lines := strings.Split(strings.TrimSpace(mapData), "\n")
+func parseMap(data string) [][]rune {
+	data = strings.ReplaceAll(data, "\r\n", "\n")
+	lines := strings.Split(strings.Trim(data, "\n"), "\n")
 
-	height := len(lines)
+	runeLines := make([][]rune, len(lines))
 	width := 0
-	for _, line := range lines {
-		if len(line) > width {
-			width = len(line)
-		}
+	for i, line := range lines {
+		runeLines[i] = []rune(line)
+		width = max(width, len(runeLines[i]))
 	}
 
-	grid := make([][]rune, height)
-
-	for y := 0; y < height; y++ {
+	grid := make([][]rune, len(runeLines))
+	for y, line := range runeLines {
 		grid[y] = make([]rune, width)
-		for x, ch := range lines[y] {
-			grid[y][x] = ch
+		copy(grid[y], line)
+		for x := len(line); x < width; x++ {
+			grid[y][x] = levelEmpty
 		}
 	}
-
-	for _, entity := range l.entities {
-		grid[entity.Y][entity.X] = entity.Symbol
-	}
-
-	l.MapGrid = grid
-
+	return grid
 }

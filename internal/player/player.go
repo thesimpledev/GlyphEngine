@@ -1,30 +1,23 @@
 package player
 
 import (
-	_ "embed"
+	"bytes"
+	"errors"
+	"fmt"
 	"log"
+	"math/rand/v2"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/audio"
-	"golang.org/x/exp/rand"
+	"github.com/hajimehoshi/ebiten/v2/audio/wav"
+	"github.com/thesimpledev/GlyphEngine/internal/input"
 )
 
-// //go:embed assets/audio/footstep_carpet_000.wav
-// var step1 []byte
-
-// //go:embed assets/audio/footstep_carpet_001.wav
-// var step2 []byte
-
-// //go:embed assets/audio/footstep_carpet_002.wav
-// var step3 []byte
-
-const (
-	MOVE_COOLDOWN = 15
-)
+const moveCooldown = 15
 
 type Level interface {
 	IsWalkable(x, y int) bool
-	UpdateBoard(x, y, dx, dy int)
+	UpdateBoard(fromX, fromY, toX, toY int)
 	UpdateCamera(x, y int)
 }
 
@@ -33,6 +26,7 @@ type Player struct {
 	walk             []*audio.Player
 	movementCooldown int
 	Level            Level
+	Keys             input.KeyReader
 }
 
 type PlayerMove struct {
@@ -40,8 +34,20 @@ type PlayerMove struct {
 	y int
 }
 
+type keyBinding struct {
+	key  ebiten.Key
+	move PlayerMove
+}
+
+var moveBindings = []keyBinding{
+	{ebiten.KeyW, PlayerMove{0, -1}},
+	{ebiten.KeyA, PlayerMove{-1, 0}},
+	{ebiten.KeyS, PlayerMove{0, 1}},
+	{ebiten.KeyD, PlayerMove{1, 0}},
+}
+
 func New() *Player {
-	return &Player{}
+	return &Player{Keys: input.Keyboard{}}
 }
 
 func (p *Player) Update() {
@@ -50,46 +56,70 @@ func (p *Player) Update() {
 		return
 	}
 
-	currentMove := PlayerMove{0, 0}
-	hasMoveInput := false
-	if ebiten.IsKeyPressed(ebiten.KeyW) {
-		currentMove = PlayerMove{0, -1}
-		hasMoveInput = true
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyA) {
-		currentMove = PlayerMove{-1, 0}
-		hasMoveInput = true
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyS) {
-		currentMove = PlayerMove{0, 1}
-		hasMoveInput = true
-	}
-	if ebiten.IsKeyPressed(ebiten.KeyD) {
-		currentMove = PlayerMove{1, 0}
-		hasMoveInput = true
+	move, ok := p.readMove()
+	if !ok {
+		return
 	}
 
-	if hasMoveInput {
-		p.movementCooldown = MOVE_COOLDOWN
-		newPosition := PlayerMove{p.x + currentMove.x, p.y + currentMove.y}
-		p.move(newPosition)
-	}
-
+	p.movementCooldown = moveCooldown
+	p.move(PlayerMove{p.x + move.x, p.y + move.y})
 }
 
-func (p *Player) move(newPosition PlayerMove) {
-	if p.Level.IsWalkable(newPosition.x, newPosition.y) {
-		p.Level.UpdateBoard(p.x, p.y, newPosition.x, newPosition.y)
-		p.x = newPosition.x
-		p.y = newPosition.y
-		// p.PlayFootstep()
-		p.Level.UpdateCamera(p.x, p.y)
+func (p *Player) readMove() (PlayerMove, bool) {
+	var move PlayerMove
+	found := false
+	for _, binding := range moveBindings {
+		if p.keys().IsKeyPressed(binding.key) {
+			move = binding.move
+			found = true
+		}
 	}
+	return move, found
+}
+
+func (p *Player) keys() input.KeyReader {
+	if p.Keys == nil {
+		return input.Keyboard{}
+	}
+	return p.Keys
+}
+
+func (p *Player) move(to PlayerMove) {
+	if p.Level == nil || !p.Level.IsWalkable(to.x, to.y) {
+		return
+	}
+	p.Level.UpdateBoard(p.x, p.y, to.x, to.y)
+	p.x = to.x
+	p.y = to.y
+	p.PlayFootstep()
+	p.Level.UpdateCamera(p.x, p.y)
+}
+
+func (p *Player) LoadFootsteps(ctx *audio.Context, wavs ...[]byte) error {
+	if ctx == nil {
+		return errors.New("player: audio context is nil")
+	}
+	players := make([]*audio.Player, 0, len(wavs))
+	for i, data := range wavs {
+		stream, err := wav.DecodeWithSampleRate(ctx.SampleRate(), bytes.NewReader(data))
+		if err != nil {
+			return fmt.Errorf("player: decode footstep %d: %w", i, err)
+		}
+		footstep, err := ctx.NewPlayer(stream)
+		if err != nil {
+			return fmt.Errorf("player: create footstep %d: %w", i, err)
+		}
+		players = append(players, footstep)
+	}
+	p.walk = append(p.walk, players...)
+	return nil
 }
 
 func (p *Player) PlayFootstep() {
-	index := rand.Intn(len(p.walk))
-	sound := p.walk[index]
+	if len(p.walk) == 0 {
+		return
+	}
+	sound := p.walk[rand.IntN(len(p.walk))] // #nosec G404 -- footstep variety, not security sensitive
 	sound.SetVolume(0.5)
 	if err := sound.Rewind(); err != nil {
 		log.Printf("footstep rewind failed: %v", err)
@@ -101,34 +131,4 @@ func (p *Player) PlayFootstep() {
 func (p *Player) SetPosition(x, y int) {
 	p.x = x
 	p.y = y
-}
-
-func loadAudio() {
-	// d1, err := wav.Decode(ac, bytes.NewReader(step1))
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// p1, err := ac.NewPlayer(d1)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// d2, err := wav.Decode(ac, bytes.NewReader(step2))
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// p2, err := ac.NewPlayer(d2)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// d3, err := wav.Decode(ac, bytes.NewReader(step3))
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// p3, err := ac.NewPlayer(d3)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// walk: []*audio.Player{p1, p2, p3},
 }

@@ -65,10 +65,11 @@
         },
         {
           "id": "security",
+          "text": "You hear an alarm go off and people running",
           "options": [
             {
-              "text": "You hear an alarm go off and people running",
-              "next_state": "end_game"
+              "text": "Leave",
+              "nextState": "end_game"
             }
           ]
         }

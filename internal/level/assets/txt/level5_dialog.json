@@ -20,11 +20,11 @@
           "options": [
             {
               "text": "Yes",
-              "nextStatee": "end_game"
+              "nextState": "end_game"
             },
             {
               "text": "No",
-              "nextStatee": "end"
+              "nextState": "end"
             }
           ]
         }

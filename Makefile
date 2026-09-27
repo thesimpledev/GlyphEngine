@@ -5,7 +5,7 @@ PROJECT_PATH          = github.com/thesimpledev/GlyphEngine
 DIST_DIR             = dist
 VERSION              = 1.2.5
 
-GOROOT_WASM          = $(shell go env GOROOT)/misc/wasm/wasm_exec.js
+GOROOT_WASM          = $(shell go env GOROOT)/lib/wasm/wasm_exec.js
 
 BUTLER_USER          = ApocalypseTheory
 BUTLER_PROJECT       = the-social-contract
@@ -20,7 +20,7 @@ BUTLER_CHANNEL_LINUX = linux
 
 help:
 	@echo "Available targets:"
-	@echo "  make build              - Clean, deps, build Web/Win/Linux, deploy Win/Linux to itch.io, then clean again"
+	@echo "  make build              - Clean, deps, build Web/Win/Linux, deploy Web/Win/Linux to itch.io, then clean again"
 	@echo "  make build-web          - Build for Web (HTML5)"
 	@echo "  make build-pc-windows   - Build for Windows"
 	@echo "  make build-pc-linux     - Build for Linux"
@@ -93,6 +93,7 @@ clean:
 depend:
 	@echo "=== Updating Dependencies ==="
 	@go mod tidy
+	@go mod vendor
 	@echo "Dependencies updated."
 
 status:

@@ -14,7 +14,17 @@ still I had fun writing it, I may even come back and clean it up more in the fut
 
 I will fill this in later, for now just read over the code. I removed most of the assets since they
 
-did not belong to me. So you will need to include your own sound files in `internal/player/player.go`
+did not belong to me. Footstep sounds are optional: embed your own WAV files and pass them to
+`Player.LoadFootsteps` with the game's audio context, for example in `main.go`:
+
+```go
+//go:embed assets/audio/step1.wav
+var step1 []byte
+
+if err := p.LoadFootsteps(g.AudioContext, step1); err != nil {
+	log.Fatal(err)
+}
+```
 
 You will also need to update the image references that I did not include for the intro scene in `internal/intro/intro.go`
 
@@ -24,7 +34,7 @@ I had fun with it, and I am hoping someone else will find this interesting or us
 
 ## ToDo List
 
-- [ ] Fix Restart Not resetting Camera
+- [x] Fix Restart Not resetting Camera
 - [ ] 100% test coverage `player.go`
 - [ ] Add New Audio for `player.go`
 - [ ] 100% test coverage `game.go`
